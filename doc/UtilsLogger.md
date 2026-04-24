@@ -43,7 +43,7 @@ enum class LogLevel {
 
 | 関数 | レベル | 説明 |
 |---|---|---|
-| `Logger::Error(fmt, ...)` | ERROR | エラーを出力（常にファイルにも書く） |
+| `Logger::Error(fmt, ...)` | ERROR | エラーを出力（ログファイルを開いている場合は常にファイルにも出力） |
 | `Logger::Warning(fmt, ...)` | WARNING | 警告を出力 |
 | `Logger::Info(fmt, ...)` | INFO | 情報を出力 |
 | `Logger::Debug(fmt, ...)` | DEBUG | デバッグ情報を出力 |
@@ -90,7 +90,7 @@ enum class LogLevel {
 | `Logger::ClearBuffer()` | バッファ内のログを破棄 |
 | `Logger::SetFlushIntervalMs(int ms)` | バッファフラッシュの間隔（ミリ秒）を設定 |
 | `Logger::GetFlushIntervalMs()` | 現在のフラッシュ間隔を取得 |
-| `Logger::FlushBufferIfDue(long long ms)` | フラッシュ間隔が経過していればバッファをフラッシュ |
+| `Logger::FlushBufferIfDue(long long ms)` | 現在実装では、フラッシュ間隔が経過していればバッファをフラッシュし、未到達の場合はバッファをクリア |
 
 ---
 
@@ -242,8 +242,11 @@ int main() {
 
         Logger::DebugVerbose("frame %d", frame);
 
-        // フラッシュ間隔が経過していればバッファを出力
-        Logger::FlushBufferIfDue(GetCurrentUnixTimeMs());
+        // 現行実装では期限未到達時にバッファがクリアされるため、
+        // FlushBufferIfDue() はフラッシュ間隔相当で呼び出す
+        if ((frame + 1) % 25 == 0) {   // 約 200ms ごと（8ms × 25）
+            Logger::FlushBufferIfDue(GetCurrentUnixTimeMs());
+        }
 
         SleepMilliseconds(8);
     }
