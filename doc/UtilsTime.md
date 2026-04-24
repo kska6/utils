@@ -113,11 +113,13 @@ int main() {
 
 出力例:
 ```
-frame  0 | 00m 00s 000ms | dt=0.000ms | 0Hz
+frame  0 | 00m 00s 000ms | dt=0.xxx ms | 0Hz  ※ 初回は Initialize() からの経過時間が入るため 0 にはなりません
 frame  1 | 00m 00s 016ms | dt=16.123ms | 61Hz
 frame  2 | 00m 00s 032ms | dt=16.089ms | 62Hz
 ...
 ```
+
+> **注意**: 最初のフレーム（frame 0）の `delta_time_ms` は `Initialize()` 呼び出しから `UpdateFrameTime()` 呼び出しまでの経過時間になるため、環境によって数 ms 〜数十 ms になります。正確なデルタタイムが必要な場合は、最初のフレームの値を捨てるか、`Initialize()` 直後に `UpdateFrameTime()` を 1 回空振りさせてください。
 
 ---
 
