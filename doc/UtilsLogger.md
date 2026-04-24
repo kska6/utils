@@ -11,7 +11,7 @@
 - ANSI カラー出力対応
 - ログのバッファリングと定期フラッシュ
 - タイムスタンプ付きログファイル名の自動生成
-- スレッドセーフ（`std::mutex` によるロック）
+- ログ出力は `std::mutex` によりスレッドセーフですが、`SetLogLevel` / `SetTimestampEnabled` / `SetColorEnabled` / `SetBufferingEnabled` などの設定変更はロックされていません。設定変更は起動時など単一スレッドで行う必要があります。
 
 **必要な C++ バージョン**: C++17 以上  
 **依存ヘッダ**: `UtilsTime.h`
@@ -32,6 +32,18 @@ enum class LogLevel {
 
 コンソールとファイルでそれぞれ独立したレベルを設定できます。  
 デフォルトはコンソール: `LL_INFO`、ファイル: `LL_DEBUG_VERBOSE`。
+
+実際のログ出力では、各レベルは次のタグで表示されます。
+
+| レベル | 表示タグ |
+|---|---|
+| `LL_ERROR` | `[ERROR]` |
+| `LL_WARNING` | `[WARN]` |
+| `LL_INFO` | `[INFO]` |
+| `LL_DEBUG` | `[DEBUG]` |
+| `LL_DEBUG_VERBOSE` | `[TRACE]` |
+
+> **注意**: `LL_DEBUG_VERBOSE` の表示タグは `[TRACE]` です（`DEBUG_VERBOSE` ではありません）。
 
 ---
 
@@ -244,7 +256,7 @@ int main() {
 
         // 現行実装では期限未到達時にバッファがクリアされるため、
         // FlushBufferIfDue() はフラッシュ間隔相当で呼び出す
-        if ((frame + 1) % 25 == 0) {   // 約 200ms ごと（8ms × 25）
+        if ((frame + 1) % 26 == 0) {   // 約 208ms ごと（8ms × 26）で 200ms を確実に超える
             Logger::FlushBufferIfDue(GetCurrentUnixTimeMs());
         }
 
