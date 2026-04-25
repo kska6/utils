@@ -4,7 +4,7 @@
 
 ## 使い方
 
-`include/` をインクルードパスに追加して、必要なヘッダだけを読み込みます。
+`include/` をインクルードパスに追加し、必要なヘッダだけを読み込みます。
 
 ```cpp
 #include "UtilsTime.h"
@@ -16,7 +16,6 @@
 ## 対応環境
 
 - C++17 以上
-- ヘッダオンリー
 - Windows / Unix 系の両方を想定
 
 ## 各ヘッダの使い方
@@ -50,7 +49,7 @@ LoadCSVValue("data.csv", loaded, values.size());
 
 `LoadCSVValue` は `index,value` 形式を読み込みます。`SaveCSVValue` は同形式で保存し、既存ファイルがある場合は `.bak` を作成します。
 
-`UtilsCSV.h` のログ出力を `Logger` に接続したい場合は、`UtilsCSV.h` を読む前に `UTILS_ENABLE_LOGGER` を定義してください。
+`UtilsCSV.h` のログ出力を `Logger` に接続する場合は、`UtilsCSV.h` を読む前に `UTILS_ENABLE_LOGGER` を定義してください。
 
 ```cpp
 #define UTILS_ENABLE_LOGGER
@@ -103,10 +102,7 @@ int main() {
 
 ## 参照ファイル
 
-```text
-include/
-  UtilsCSV.h
-  UtilsInput.h
-  UtilsLogger.h
-  UtilsTime.h
-```
+- [include/UtilsCSV.h](include/UtilsCSV.h)
+- [include/UtilsInput.h](include/UtilsInput.h)
+- [include/UtilsLogger.h](include/UtilsLogger.h)
+- [include/UtilsTime.h](include/UtilsTime.h)

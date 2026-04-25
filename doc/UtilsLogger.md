@@ -11,7 +11,7 @@
 - ANSI カラー出力対応
 - ログのバッファリングと定期フラッシュ
 - タイムスタンプ付きログファイル名の自動生成
-- ログ出力は `std::mutex` によりスレッドセーフですが、`SetLogLevel` / `SetTimestampEnabled` / `SetColorEnabled` / `SetBufferingEnabled` などの設定変更はロックされていません。設定変更は起動時など単一スレッドで行う必要があります。
+- 同一の `Logger` インスタンスに対する出力と設定変更は、並行利用を前提に扱えます。
 
 **必要な C++ バージョン**: C++17 以上  
 **依存ヘッダ**: `UtilsTime.h`
@@ -100,9 +100,9 @@ enum class LogLevel {
 | `Logger::SetBufferingEnabled(bool)` | バッファリングをオン/オフ |
 | `Logger::FlushBuffer()` | バッファ内のログを即座に出力 |
 | `Logger::ClearBuffer()` | バッファ内のログを破棄 |
-| `Logger::SetFlushIntervalMs(int ms)` | バッファフラッシュの間隔（ミリ秒）を設定 |
+| `Logger::SetFlushIntervalMs(long long ms)` | バッファフラッシュの間隔（ミリ秒）を設定 |
 | `Logger::GetFlushIntervalMs()` | 現在のフラッシュ間隔を取得 |
-| `Logger::FlushBufferIfDue(long long ms)` | 現在実装では、フラッシュ間隔が経過していればバッファをフラッシュし、未到達の場合はバッファをクリア |
+| `Logger::FlushOrClearBuffer(long long ms)` | フラッシュ間隔が経過していればバッファをフラッシュし、未到達の場合はバッファをクリア |
 
 ---
 
@@ -249,15 +249,18 @@ int main() {
     Logger::SetBufferingEnabled(true);
     Logger::SetFlushIntervalMs(200);   // 200ms ごとにフラッシュ
 
+    const long long flush_check_interval_ms = 250;   // 250ms ごとにフラッシュ判定
+    long long last_flush_check_ms = GetCurrentUnixTimeMs();
+
     for (int frame = 0; frame < 300; ++frame) {
         UpdateFrameTime();
 
         Logger::DebugVerbose("frame %d", frame);
 
-        // 現行実装では期限未到達時にバッファがクリアされるため、
-        // FlushBufferIfDue() はフラッシュ間隔相当で呼び出す
-        if ((frame + 1) % 26 == 0) {   // 約 208ms ごと（8ms × 26）で 200ms を確実に超える
-            Logger::FlushBufferIfDue(GetCurrentUnixTimeMs());
+        long long now = GetCurrentUnixTimeMs();
+        if (now - last_flush_check_ms >= flush_check_interval_ms) {
+            Logger::FlushOrClearBuffer(now);
+            last_flush_check_ms = now;
         }
 
         SleepMilliseconds(8);
