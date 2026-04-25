@@ -5,7 +5,7 @@
 `include/UtilsLogger.h` はヘッダオンリーのロギングユーティリティです。  
 `UtilsTime.h` に依存します。
 
-- ログレベルによるフィルタリング（ERROR / WARNING / INFO / DEBUG / DEBUG_VERBOSE）
+- ログレベルによるフィルタリング（ERROR / WARNING / INFO / DEBUG / TRACE）
 - コンソール（stdout）とファイルへの同時出力
 - タイムスタンプ・ログレベルタグの付与
 - ANSI カラー出力対応
@@ -26,12 +26,12 @@ enum class LogLevel {
     LL_WARNING        = 1,  // 警告（黄）
     LL_INFO           = 2,  // 情報（白）
     LL_DEBUG          = 3,  // デバッグ（グレー）
-    LL_DEBUG_VERBOSE  = 4   // 詳細デバッグ（グレー）
+    LL_TRACE          = 4   // トレース（グレー）
 };
 ```
 
 コンソールとファイルでそれぞれ独立したレベルを設定できます。  
-デフォルトはコンソール: `LL_INFO`、ファイル: `LL_DEBUG_VERBOSE`。
+デフォルトはコンソール: `LL_INFO`、ファイル: `LL_TRACE`。
 
 実際のログ出力では、各レベルは次のタグで表示されます。
 
@@ -41,9 +41,9 @@ enum class LogLevel {
 | `LL_WARNING` | `[WARN]` |
 | `LL_INFO` | `[INFO]` |
 | `LL_DEBUG` | `[DEBUG]` |
-| `LL_DEBUG_VERBOSE` | `[TRACE]` |
+| `LL_TRACE` | `[TRACE]` |
 
-> **注意**: `LL_DEBUG_VERBOSE` の表示タグは `[TRACE]` です（`DEBUG_VERBOSE` ではありません）。
+`LL_TRACE` はログ出力では `[TRACE]` タグとして表示されます。
 
 ---
 
@@ -59,7 +59,7 @@ enum class LogLevel {
 | `Logger::Warning(fmt, ...)` | WARNING | 警告を出力 |
 | `Logger::Info(fmt, ...)` | INFO | 情報を出力 |
 | `Logger::Debug(fmt, ...)` | DEBUG | デバッグ情報を出力 |
-| `Logger::DebugVerbose(fmt, ...)` | DEBUG_VERBOSE | 詳細デバッグ情報を出力 |
+| `Logger::Trace(fmt, ...)` | TRACE | 詳細デバッグ情報を出力 |
 | `Logger::Log(level, fmt, ...)` | 任意 | レベルを直接指定して出力 |
 | `Logger::TimePrint(timeInfo)` | DEBUG | `TimeInfo` の内容をデバッグ出力 |
 | `Logger::BlankLine()` | — | 空行を出力 |
@@ -73,7 +73,7 @@ enum class LogLevel {
 | `Logger::ForceWarning(fmt, ...)` | バッファをスキップして WARNING を即出力 |
 | `Logger::ForceInfo(fmt, ...)` | バッファをスキップして INFO を即出力 |
 | `Logger::ForceDebug(fmt, ...)` | バッファをスキップして DEBUG を即出力 |
-| `Logger::ForceDebugVerbose(fmt, ...)` | バッファをスキップして DEBUG_VERBOSE を即出力 |
+| `Logger::ForceTrace(fmt, ...)` | バッファをスキップして TRACE を即出力 |
 | `Logger::ForceBlankLine()` | バッファをスキップして空行を即出力 |
 
 ---
@@ -154,15 +154,15 @@ HH:MM:SS [LEVEL] メッセージ
 #include "UtilsLogger.h"
 
 int main() {
-    // コンソール: INFO 以上、ファイル: DEBUG_VERBOSE 以上
-    Logger::SetLogLevel(LogLevel::LL_INFO, LogLevel::LL_DEBUG_VERBOSE);
+    // コンソール: INFO 以上、ファイル: TRACE 以上
+    Logger::SetLogLevel(LogLevel::LL_INFO, LogLevel::LL_TRACE);
     Logger::SetLogFileTimestamped("logs/app");
 
     Logger::Info("アプリを開始します");
     Logger::Warning("警告: 設定が未指定です");
     Logger::Error("エラー: ファイルが見つかりません");
     Logger::Debug("デバッグ情報（コンソールには表示されない）");
-    Logger::DebugVerbose("詳細デバッグ（コンソールには表示されない）");
+    Logger::Trace("詳細デバッグ（コンソールには表示されない）");
 
     Logger::CloseLogFile();
     return 0;
@@ -178,7 +178,7 @@ int main() {
 #include <vector>
 
 int main() {
-    Logger::SetLogLevel(LogLevel::LL_DEBUG, LogLevel::LL_DEBUG_VERBOSE);
+    Logger::SetLogLevel(LogLevel::LL_DEBUG, LogLevel::LL_TRACE);
     Logger::SetLogFileTimestamped("logs/loop");
 
     std::vector<int> data = {10, 25, 3, 47, 8, 99, 56, 14};
@@ -209,7 +209,7 @@ int main() {
 
 int main() {
     TimeManager::Initialize();
-    Logger::SetLogLevel(LogLevel::LL_DEBUG, LogLevel::LL_DEBUG_VERBOSE);
+    Logger::SetLogLevel(LogLevel::LL_DEBUG, LogLevel::LL_TRACE);
     Logger::SetLogFileTimestamped("logs/frame");
 
     const int total_frames = 60;
@@ -244,7 +244,7 @@ int main() {
 
 int main() {
     TimeManager::Initialize();
-    Logger::SetLogLevel(LogLevel::LL_DEBUG_VERBOSE, LogLevel::LL_DEBUG_VERBOSE);
+    Logger::SetLogLevel(LogLevel::LL_TRACE, LogLevel::LL_TRACE);
     Logger::SetLogFileTimestamped("logs/buffered");
     Logger::SetBufferingEnabled(true);
     Logger::SetFlushIntervalMs(200);   // 200ms ごとにフラッシュ
@@ -255,7 +255,7 @@ int main() {
     for (int frame = 0; frame < 300; ++frame) {
         UpdateFrameTime();
 
-        Logger::DebugVerbose("frame %d", frame);
+        Logger::Trace("frame %d", frame);
 
         long long now = GetCurrentUnixTimeMs();
         if (now - last_flush_check_ms >= flush_check_interval_ms) {
@@ -287,7 +287,7 @@ static bool process_item(int value) {
 }
 
 int main() {
-    Logger::SetLogLevel(LogLevel::LL_INFO, LogLevel::LL_DEBUG_VERBOSE);
+    Logger::SetLogLevel(LogLevel::LL_INFO, LogLevel::LL_TRACE);
     Logger::SetLogFileTimestamped("logs/error_check");
 
     std::vector<int> items = {5, 12, -3, 7, 20};

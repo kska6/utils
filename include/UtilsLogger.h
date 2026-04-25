@@ -20,7 +20,7 @@ enum class LogLevel {
 	LL_WARNING = 1,
 	LL_INFO = 2,
 	LL_DEBUG = 3,
-	LL_DEBUG_VERBOSE = 4
+	LL_TRACE = 4
 };
 
 /// @brief ロギングシステムの中央管理クラス
@@ -71,10 +71,10 @@ public:
 		va_end(args);
 	}
 
-	static void DebugVerbose(const char* format, ...) {
+	static void Trace(const char* format, ...) {
 		va_list args;
 		va_start(args, format);
-		GetInstance().LogV(LogLevel::LL_DEBUG_VERBOSE, format, args);
+		GetInstance().LogV(LogLevel::LL_TRACE, format, args);
 		va_end(args);
 	}
 
@@ -99,10 +99,10 @@ public:
 		va_end(args);
 	}
 
-	static void ForceDebugVerbose(const char* format, ...) {
+	static void ForceTrace(const char* format, ...) {
 		va_list args;
 		va_start(args, format);
-		GetInstance().LogV(LogLevel::LL_DEBUG_VERBOSE, format, args, true);
+		GetInstance().LogV(LogLevel::LL_TRACE, format, args, true);
 		va_end(args);
 	}
 
@@ -209,7 +209,7 @@ public:
 private:
 	Logger()
 		: console_level(LogLevel::LL_INFO)
-		, file_level(LogLevel::LL_DEBUG_VERBOSE)
+		, file_level(LogLevel::LL_TRACE)
 		, log_file(nullptr)
 		, show_timestamp(true)
 		, show_level_tag(true)
@@ -484,7 +484,7 @@ private:
 		case LogLevel::LL_WARNING: return "WARN";
 		case LogLevel::LL_INFO: return "INFO";
 		case LogLevel::LL_DEBUG: return "DEBUG";
-		case LogLevel::LL_DEBUG_VERBOSE: return "TRACE";
+		case LogLevel::LL_TRACE: return "TRACE";
 		default: return "LOG";
 		}
 	}
@@ -495,7 +495,7 @@ private:
 		case LogLevel::LL_WARNING: return "\033[33m";
 		case LogLevel::LL_INFO: return "\033[37m";
 		case LogLevel::LL_DEBUG: return "\033[90m";
-		case LogLevel::LL_DEBUG_VERBOSE: return "\033[90m";
+		case LogLevel::LL_TRACE: return "\033[90m";
 		default: return "\033[0m";
 		}
 	}
