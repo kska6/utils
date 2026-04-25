@@ -249,13 +249,18 @@ int main() {
     Logger::SetBufferingEnabled(true);
     Logger::SetFlushIntervalMs(200);   // 200ms ごとにフラッシュ
 
+    const long long flush_check_interval_ms = 250;   // 250ms ごとにフラッシュ判定
+    long long last_flush_check_ms = GetCurrentUnixTimeMs();
+
     for (int frame = 0; frame < 300; ++frame) {
         UpdateFrameTime();
 
         Logger::DebugVerbose("frame %d", frame);
 
-        if ((frame + 1) % 26 == 0) {
-            Logger::FlushBufferIfDue(GetCurrentUnixTimeMs());
+        long long now = GetCurrentUnixTimeMs();
+        if (now - last_flush_check_ms >= flush_check_interval_ms) {
+            Logger::FlushBufferIfDue(now);
+            last_flush_check_ms = now;
         }
 
         SleepMilliseconds(8);
