@@ -72,7 +72,7 @@ if (input_ns::KbHit()) {
 コンソール出力、ファイル出力、ログレベル制御、バッファリングに使います。
 
 ```cpp
-Logger::SetLogLevel(LogLevel::LL_INFO, LogLevel::LL_DEBUG_VERBOSE);
+Logger::SetLogLevel(LogLevel::LL_INFO, LogLevel::LL_TRACE);
 Logger::SetLogFileTimestamped("logs/app");
 Logger::Info("start");
 Logger::Warning("warning");
