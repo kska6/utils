@@ -102,7 +102,7 @@ enum class LogLevel {
 | `Logger::ClearBuffer()` | バッファ内のログを破棄 |
 | `Logger::SetFlushIntervalMs(int ms)` | バッファフラッシュの間隔（ミリ秒）を設定 |
 | `Logger::GetFlushIntervalMs()` | 現在のフラッシュ間隔を取得 |
-| `Logger::FlushBufferIfDue(long long ms)` | フラッシュ間隔が経過していればバッファをフラッシュし、未到達の場合はバッファをクリア |
+| `Logger::FlushOrClearBuffer(long long ms)` | フラッシュ間隔が経過していればバッファをフラッシュし、未到達の場合はバッファをクリア |
 
 ---
 
@@ -259,7 +259,7 @@ int main() {
 
         long long now = GetCurrentUnixTimeMs();
         if (now - last_flush_check_ms >= flush_check_interval_ms) {
-            Logger::FlushBufferIfDue(now);
+            Logger::FlushOrClearBuffer(now);
             last_flush_check_ms = now;
         }
 

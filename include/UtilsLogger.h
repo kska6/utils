@@ -197,8 +197,8 @@ public:
 		return GetInstance().flush_interval_ms;
 	}
 
-	static void FlushBufferIfDue(long long current_time_ms) {
-		GetInstance().FlushBufferIfDueImpl(current_time_ms);
+	static void FlushOrClearBuffer(long long current_time_ms) {
+		GetInstance().FlushOrClearBufferImpl(current_time_ms);
 	}
 
 	Logger(const Logger&) = delete;
@@ -364,7 +364,7 @@ private:
 		fflush(log_file);
 	}
 
-	void FlushBufferIfDueImpl(long long current_time_ms) {
+	void FlushOrClearBufferImpl(long long current_time_ms) {
 		std::lock_guard<std::mutex> lock(log_mutex);
 		if (!buffering_enabled) return;
 
