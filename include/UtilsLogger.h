@@ -187,12 +187,12 @@ public:
 		return GetInstance().last_any_output_time_ms;
 	}
 
-	static void SetFlushIntervalMs(int interval_ms) {
+	static void SetFlushIntervalMs(long long interval_ms) {
 		std::lock_guard<std::mutex> lock(GetInstance().log_mutex);
 		GetInstance().flush_interval_ms = (interval_ms < 0 ? 0 : interval_ms);
 	}
 
-	static int GetFlushIntervalMs() {
+	static long long GetFlushIntervalMs() {
 		std::lock_guard<std::mutex> lock(GetInstance().log_mutex);
 		return GetInstance().flush_interval_ms;
 	}
@@ -345,7 +345,7 @@ private:
 		std::lock_guard<std::mutex> lock(log_mutex);
 		if (!buffering_enabled) return;
 
-		if (current_time_ms - last_output_time_ms > flush_interval_ms) {
+		if (current_time_ms - last_output_time_ms >= flush_interval_ms) {
 			FlushBufferImplNoLock();
 		} else {
 			log_buffer.clear();
@@ -509,7 +509,7 @@ private:
 	bool buffering_enabled;
 	long long last_output_time_ms;
 	long long last_any_output_time_ms;
-	int flush_interval_ms;
+	long long flush_interval_ms;
 	std::vector<std::pair<LogLevel, std::string>> log_buffer;
 	std::mutex log_mutex;
 };
