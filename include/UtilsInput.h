@@ -79,6 +79,9 @@ namespace input_ns {
 
 	restore_errno:
 		errno = (failure_errno != 0 ? failure_errno : original_errno);
+		if (failure_errno != 0) {
+			result = -1;
+		}
 		return result;
 #endif
 	}
