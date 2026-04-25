@@ -5,41 +5,84 @@
 #include <conio.h>
 #else
 #include <cstdio>
+#include <cerrno>
 #include <termios.h>
 #include <unistd.h>
 #endif
 
 namespace input_ns {
+
+#ifndef _WIN32
+	namespace detail {
+		inline int& PeekedChar() {
+			static int ch = -1;
+			return ch;
+		}
+	}
+#endif
+
 	inline int GetCh() {
 #ifdef _WIN32
 		return _getch();
 #else
-		char buf = 0;
-		termios old = { 0 };
+		if (detail::PeekedChar() != -1) {
+			int ch = detail::PeekedChar();
+			detail::PeekedChar() = -1;
+			return ch;
+		}
+
+		unsigned char buf = 0;
+		termios old{}, newt{};
+		const int fd = STDIN_FILENO;
+		const int original_errno = errno;
+		int failure_errno = 0;
+		bool have_old = false;
+		int result = -1;
+
+		auto set_failure_errno = [&](int err) {
+			if (failure_errno == 0) {
+				failure_errno = err;
+			}
+		};
 
 		fflush(stdout);
 
-		if (tcgetattr(0, &old) < 0)
-			perror("tcsetattr()");
+		if (tcgetattr(fd, &old) < 0)
+		{
+			set_failure_errno(errno);
+			goto restore_errno;
+		}
+		have_old = true;
 
-		old.c_lflag &= ~ICANON;
-		old.c_lflag &= ~ECHO;
-		old.c_cc[VMIN] = 1;
-		old.c_cc[VTIME] = 0;
+		newt = old;
+		newt.c_lflag &= ~(ICANON | ECHO);
+		newt.c_cc[VMIN] = 1;
+		newt.c_cc[VTIME] = 0;
 
-		if (tcsetattr(0, TCSANOW, &old) < 0)
-			perror("tcsetattr ICANON");
+		if (tcsetattr(fd, TCSANOW, &newt) < 0)
+		{
+			set_failure_errno(errno);
+			goto restore_termios;
+		}
 
-		if (read(0, &buf, 1) < 0)
-			perror("read()");
+		if (read(fd, &buf, 1) < 0)
+		{
+			set_failure_errno(errno);
+			goto restore_termios;
+		}
 
-		old.c_lflag |= ICANON;
-		old.c_lflag |= ECHO;
+		result = static_cast<int>(buf);
 
-		if (tcsetattr(0, TCSADRAIN, &old) < 0)
-			perror("tcsetattr ~ICANON");
+	restore_termios:
+		if (have_old && tcsetattr(fd, TCSADRAIN, &old) < 0)
+			set_failure_errno(errno);
 
-		return buf;
+	restore_errno:
+		errno = (failure_errno != 0 ? failure_errno : original_errno);
+		if (failure_errno != 0) {
+			result = -1;
+		}
+		return result;
 #endif
 	}
 
@@ -47,11 +90,15 @@ namespace input_ns {
 #ifdef _WIN32
 		return _kbhit() != 0;
 #else
-		termios old = { 0 }, newt = { 0 };
+		if (detail::PeekedChar() != -1)
+			return true;
+
+		termios old{}, newt{};
 		unsigned char ch = 0;
 		int nread = 0;
+		const int fd = STDIN_FILENO;
 
-		if (tcgetattr(0, &old) < 0)
+		if (tcgetattr(fd, &old) < 0)
 			return false;
 
 		newt = old;
@@ -59,13 +106,18 @@ namespace input_ns {
 		newt.c_cc[VMIN] = 0;
 		newt.c_cc[VTIME] = 0;
 
-		if (tcsetattr(0, TCSANOW, &newt) < 0)
+		if (tcsetattr(fd, TCSANOW, &newt) < 0)
 			return false;
 
-		nread = read(0, &ch, 1);
-		tcsetattr(0, TCSANOW, &old);
+		nread = read(fd, &ch, 1);
+		tcsetattr(fd, TCSANOW, &old);
 
-		return nread > 0;
+		if (nread > 0) {
+			detail::PeekedChar() = ch;
+			return true;
+		}
+
+		return false;
 #endif
 	}
 }

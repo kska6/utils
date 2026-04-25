@@ -121,11 +121,13 @@ public:
 	}
 
 	static void SetLogLevel(LogLevel console_level, LogLevel file_level) {
+		std::lock_guard<std::mutex> lock(GetInstance().log_mutex);
 		GetInstance().console_level = console_level;
 		GetInstance().file_level = file_level;
 	}
 
 	static LogLevel GetLogLevel() {
+		std::lock_guard<std::mutex> lock(GetInstance().log_mutex);
 		return GetInstance().console_level;
 	}
 
@@ -147,18 +149,22 @@ public:
 	}
 
 	static void SetTimestampEnabled(bool enabled) {
+		std::lock_guard<std::mutex> lock(GetInstance().log_mutex);
 		GetInstance().show_timestamp = enabled;
 	}
 
 	static void SetLevelTagEnabled(bool enabled) {
+		std::lock_guard<std::mutex> lock(GetInstance().log_mutex);
 		GetInstance().show_level_tag = enabled;
 	}
 
 	static void SetColorEnabled(bool enabled) {
+		std::lock_guard<std::mutex> lock(GetInstance().log_mutex);
 		GetInstance().color_enabled = enabled;
 	}
 
 	static void SetBufferingEnabled(bool enabled) {
+		std::lock_guard<std::mutex> lock(GetInstance().log_mutex);
 		GetInstance().buffering_enabled = enabled;
 	}
 
@@ -181,18 +187,18 @@ public:
 		return GetInstance().last_any_output_time_ms;
 	}
 
-	static void SetFlushIntervalMs(int interval_ms) {
+	static void SetFlushIntervalMs(long long interval_ms) {
 		std::lock_guard<std::mutex> lock(GetInstance().log_mutex);
 		GetInstance().flush_interval_ms = (interval_ms < 0 ? 0 : interval_ms);
 	}
 
-	static int GetFlushIntervalMs() {
+	static long long GetFlushIntervalMs() {
 		std::lock_guard<std::mutex> lock(GetInstance().log_mutex);
 		return GetInstance().flush_interval_ms;
 	}
 
-	static void FlushBufferIfDue(long long current_time_ms) {
-		GetInstance().FlushBufferIfDueImpl(current_time_ms);
+	static void FlushOrClearBuffer(long long current_time_ms) {
+		GetInstance().FlushOrClearBufferImpl(current_time_ms);
 	}
 
 	Logger(const Logger&) = delete;
@@ -266,30 +272,7 @@ private:
 
 	void FlushBufferImpl() {
 		std::lock_guard<std::mutex> lock(log_mutex);
-
-		for (const auto& entry : log_buffer) {
-			LogLevel level = entry.first;
-			const std::string& message = entry.second;
-			const auto now_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-				std::chrono::system_clock::now().time_since_epoch()).count();
-			last_output_time_ms = now_ms;
-			last_any_output_time_ms = now_ms;
-
-			if (message.empty()) {
-				OutputBlankLineImpl();
-				continue;
-			}
-
-			struct tm timeinfo = {};
-			if (show_timestamp) {
-				timeinfo = GetCurrentLocalTime();
-			}
-
-			OutputLogConsoleString(level, show_timestamp ? &timeinfo : nullptr, message);
-			OutputLogFileString(level, show_timestamp ? &timeinfo : nullptr, message);
-		}
-
-		log_buffer.clear();
+		FlushBufferImplNoLock();
 	}
 
 	void OutputLogConsole(LogLevel level, const struct tm* timeinfo, const char* format, va_list args) {
@@ -358,11 +341,11 @@ private:
 		fflush(log_file);
 	}
 
-	void FlushBufferIfDueImpl(long long current_time_ms) {
+	void FlushOrClearBufferImpl(long long current_time_ms) {
 		std::lock_guard<std::mutex> lock(log_mutex);
 		if (!buffering_enabled) return;
 
-		if (current_time_ms - last_output_time_ms > flush_interval_ms) {
+		if (current_time_ms - last_output_time_ms >= flush_interval_ms) {
 			FlushBufferImplNoLock();
 		} else {
 			log_buffer.clear();
@@ -526,7 +509,7 @@ private:
 	bool buffering_enabled;
 	long long last_output_time_ms;
 	long long last_any_output_time_ms;
-	int flush_interval_ms;
+	long long flush_interval_ms;
 	std::vector<std::pair<LogLevel, std::string>> log_buffer;
 	std::mutex log_mutex;
 };

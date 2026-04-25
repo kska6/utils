@@ -12,11 +12,43 @@
 
 #ifdef UTILS_ENABLE_LOGGER
 #include "UtilsLogger.h"
-#define CSV_LOG_ERROR(...) Logger::Error(__VA_ARGS__)
-#define CSV_LOG_WARNING(...) Logger::Warning(__VA_ARGS__)
+static inline void CSV_LOG_ERROR_IMPL(const char* fmt) {
+	Logger::Error("%s", fmt);
+}
+
+template <typename... Args>
+static inline void CSV_LOG_ERROR_IMPL(const char* fmt, Args... args) {
+	Logger::Error(fmt, args...);
+}
+
+static inline void CSV_LOG_WARNING_IMPL(const char* fmt) {
+	Logger::Warning("%s", fmt);
+}
+
+template <typename... Args>
+static inline void CSV_LOG_WARNING_IMPL(const char* fmt, Args... args) {
+	Logger::Warning(fmt, args...);
+}
+
+#define CSV_LOG_ERROR(...) CSV_LOG_ERROR_IMPL(__VA_ARGS__)
+#define CSV_LOG_WARNING(...) CSV_LOG_WARNING_IMPL(__VA_ARGS__)
 #else
-#define CSV_LOG_ERROR(fmt, ...) std::fprintf(stderr, "Error: " fmt "\n", ##__VA_ARGS__)
-#define CSV_LOG_WARNING(fmt, ...) std::fprintf(stderr, "Warning: " fmt "\n", ##__VA_ARGS__)
+template <typename... Args>
+static inline void CSV_LOG_ERROR_IMPL(const char* fmt, Args... args) {
+	std::fprintf(stderr, "Error: ");
+	std::fprintf(stderr, fmt, args...);
+	std::fprintf(stderr, "\n");
+}
+
+template <typename... Args>
+static inline void CSV_LOG_WARNING_IMPL(const char* fmt, Args... args) {
+	std::fprintf(stderr, "Warning: ");
+	std::fprintf(stderr, fmt, args...);
+	std::fprintf(stderr, "\n");
+}
+
+#define CSV_LOG_ERROR(...) CSV_LOG_ERROR_IMPL(__VA_ARGS__)
+#define CSV_LOG_WARNING(...) CSV_LOG_WARNING_IMPL(__VA_ARGS__)
 #endif
 
 // CSV escaping helper (inline so templates can use it)
