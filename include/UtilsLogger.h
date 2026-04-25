@@ -272,30 +272,7 @@ private:
 
 	void FlushBufferImpl() {
 		std::lock_guard<std::mutex> lock(log_mutex);
-
-		for (const auto& entry : log_buffer) {
-			LogLevel level = entry.first;
-			const std::string& message = entry.second;
-			const auto now_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-				std::chrono::system_clock::now().time_since_epoch()).count();
-			last_output_time_ms = now_ms;
-			last_any_output_time_ms = now_ms;
-
-			if (message.empty()) {
-				OutputBlankLineImpl();
-				continue;
-			}
-
-			struct tm timeinfo = {};
-			if (show_timestamp) {
-				timeinfo = GetCurrentLocalTime();
-			}
-
-			OutputLogConsoleString(level, show_timestamp ? &timeinfo : nullptr, message);
-			OutputLogFileString(level, show_timestamp ? &timeinfo : nullptr, message);
-		}
-
-		log_buffer.clear();
+		FlushBufferImplNoLock();
 	}
 
 	void OutputLogConsole(LogLevel level, const struct tm* timeinfo, const char* format, va_list args) {
