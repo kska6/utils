@@ -121,11 +121,13 @@ public:
 	}
 
 	static void SetLogLevel(LogLevel console_level, LogLevel file_level) {
+		std::lock_guard<std::mutex> lock(GetInstance().log_mutex);
 		GetInstance().console_level = console_level;
 		GetInstance().file_level = file_level;
 	}
 
 	static LogLevel GetLogLevel() {
+		std::lock_guard<std::mutex> lock(GetInstance().log_mutex);
 		return GetInstance().console_level;
 	}
 
@@ -147,18 +149,22 @@ public:
 	}
 
 	static void SetTimestampEnabled(bool enabled) {
+		std::lock_guard<std::mutex> lock(GetInstance().log_mutex);
 		GetInstance().show_timestamp = enabled;
 	}
 
 	static void SetLevelTagEnabled(bool enabled) {
+		std::lock_guard<std::mutex> lock(GetInstance().log_mutex);
 		GetInstance().show_level_tag = enabled;
 	}
 
 	static void SetColorEnabled(bool enabled) {
+		std::lock_guard<std::mutex> lock(GetInstance().log_mutex);
 		GetInstance().color_enabled = enabled;
 	}
 
 	static void SetBufferingEnabled(bool enabled) {
+		std::lock_guard<std::mutex> lock(GetInstance().log_mutex);
 		GetInstance().buffering_enabled = enabled;
 	}
 
