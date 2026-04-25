@@ -100,7 +100,7 @@ enum class LogLevel {
 | `Logger::SetBufferingEnabled(bool)` | バッファリングをオン/オフ |
 | `Logger::FlushBuffer()` | バッファ内のログを即座に出力 |
 | `Logger::ClearBuffer()` | バッファ内のログを破棄 |
-| `Logger::SetFlushIntervalMs(int ms)` | バッファフラッシュの間隔（ミリ秒）を設定 |
+| `Logger::SetFlushIntervalMs(long long ms)` | バッファフラッシュの間隔（ミリ秒）を設定 |
 | `Logger::GetFlushIntervalMs()` | 現在のフラッシュ間隔を取得 |
 | `Logger::FlushOrClearBuffer(long long ms)` | フラッシュ間隔が経過していればバッファをフラッシュし、未到達の場合はバッファをクリア |
 

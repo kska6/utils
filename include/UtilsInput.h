@@ -5,6 +5,7 @@
 #include <conio.h>
 #else
 #include <cstdio>
+#include <cerrno>
 #include <termios.h>
 #include <unistd.h>
 #endif
@@ -30,29 +31,55 @@ namespace input_ns {
 			return ch;
 		}
 
-		char buf = 0;
-		termios old = { 0 }, newt = { 0 };
+		unsigned char buf = 0;
+		termios old{}, newt{};
+		const int fd = STDIN_FILENO;
+		const int original_errno = errno;
+		int failure_errno = 0;
+		bool have_old = false;
+		int result = -1;
+
+		auto set_failure_errno = [&](int err) {
+			if (failure_errno == 0) {
+				failure_errno = err;
+			}
+		};
 
 		fflush(stdout);
 
-		if (tcgetattr(0, &old) < 0)
-			perror("tcgetattr()");
+		if (tcgetattr(fd, &old) < 0)
+		{
+			set_failure_errno(errno);
+			goto restore_errno;
+		}
+		have_old = true;
 
 		newt = old;
 		newt.c_lflag &= ~(ICANON | ECHO);
 		newt.c_cc[VMIN] = 1;
 		newt.c_cc[VTIME] = 0;
 
-		if (tcsetattr(0, TCSANOW, &newt) < 0)
-			perror("tcsetattr ICANON");
+		if (tcsetattr(fd, TCSANOW, &newt) < 0)
+		{
+			set_failure_errno(errno);
+			goto restore_termios;
+		}
 
-		if (read(0, &buf, 1) < 0)
-			perror("read()");
+		if (read(fd, &buf, 1) < 0)
+		{
+			set_failure_errno(errno);
+			goto restore_termios;
+		}
 
-		if (tcsetattr(0, TCSADRAIN, &old) < 0)
-			perror("tcsetattr ~ICANON");
+		result = static_cast<int>(buf);
 
-		return buf;
+	restore_termios:
+		if (have_old && tcsetattr(fd, TCSADRAIN, &old) < 0)
+			set_failure_errno(errno);
+
+	restore_errno:
+		errno = (failure_errno != 0 ? failure_errno : original_errno);
+		return result;
 #endif
 	}
 
@@ -63,11 +90,12 @@ namespace input_ns {
 		if (detail::PeekedChar() != -1)
 			return true;
 
-		termios old = { 0 }, newt = { 0 };
+		termios old{}, newt{};
 		unsigned char ch = 0;
 		int nread = 0;
+		const int fd = STDIN_FILENO;
 
-		if (tcgetattr(0, &old) < 0)
+		if (tcgetattr(fd, &old) < 0)
 			return false;
 
 		newt = old;
@@ -75,11 +103,11 @@ namespace input_ns {
 		newt.c_cc[VMIN] = 0;
 		newt.c_cc[VTIME] = 0;
 
-		if (tcsetattr(0, TCSANOW, &newt) < 0)
+		if (tcsetattr(fd, TCSANOW, &newt) < 0)
 			return false;
 
-		nread = read(0, &ch, 1);
-		tcsetattr(0, TCSANOW, &old);
+		nread = read(fd, &ch, 1);
+		tcsetattr(fd, TCSANOW, &old);
 
 		if (nread > 0) {
 			detail::PeekedChar() = ch;
