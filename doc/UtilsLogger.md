@@ -11,7 +11,7 @@
 - ANSI カラー出力対応
 - ログのバッファリングと定期フラッシュ
 - タイムスタンプ付きログファイル名の自動生成
-- ログ出力は `std::mutex` によりスレッドセーフですが、`SetLogLevel` / `SetTimestampEnabled` / `SetColorEnabled` / `SetBufferingEnabled` などの設定変更はロックされていません。設定変更は起動時など単一スレッドで行う必要があります。
+- ログ出力は `std::mutex` によりスレッドセーフです。`SetLogLevel` / `SetTimestampEnabled` / `SetColorEnabled` / `SetBufferingEnabled` などの設定変更も同様に `std::mutex` で保護されています。
 
 **必要な C++ バージョン**: C++17 以上  
 **依存ヘッダ**: `UtilsTime.h`

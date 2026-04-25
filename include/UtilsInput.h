@@ -10,10 +10,26 @@
 #endif
 
 namespace input_ns {
+
+#ifndef _WIN32
+	namespace detail {
+		inline int& PeekedChar() {
+			static int ch = -1;
+			return ch;
+		}
+	}
+#endif
+
 	inline int GetCh() {
 #ifdef _WIN32
 		return _getch();
 #else
+		if (detail::PeekedChar() != -1) {
+			int ch = detail::PeekedChar();
+			detail::PeekedChar() = -1;
+			return ch;
+		}
+
 		char buf = 0;
 		termios old = { 0 };
 
@@ -47,6 +63,9 @@ namespace input_ns {
 #ifdef _WIN32
 		return _kbhit() != 0;
 #else
+		if (detail::PeekedChar() != -1)
+			return true;
+
 		termios old = { 0 }, newt = { 0 };
 		unsigned char ch = 0;
 		int nread = 0;
@@ -65,7 +84,12 @@ namespace input_ns {
 		nread = read(0, &ch, 1);
 		tcsetattr(0, TCSANOW, &old);
 
-		return nread > 0;
+		if (nread > 0) {
+			detail::PeekedChar() = ch;
+			return true;
+		}
+
+		return false;
 #endif
 	}
 }
