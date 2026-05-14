@@ -5,6 +5,7 @@
 #include <cstdio>
 #include <filesystem>
 #include <fstream>
+#include <ostream>
 #include <sstream>
 #include <string>
 #include <system_error>
@@ -33,11 +34,19 @@ static inline void CSV_LOG_WARNING_IMPL(const char* fmt, Args... args) {
 #define CSV_LOG_ERROR(...) CSV_LOG_ERROR_IMPL(__VA_ARGS__)
 #define CSV_LOG_WARNING(...) CSV_LOG_WARNING_IMPL(__VA_ARGS__)
 #else
+static inline void CSV_LOG_ERROR_IMPL(const char* fmt) {
+	std::fprintf(stderr, "Error: %s\n", fmt);
+}
+
 template <typename... Args>
 static inline void CSV_LOG_ERROR_IMPL(const char* fmt, Args... args) {
 	std::fprintf(stderr, "Error: ");
 	std::fprintf(stderr, fmt, args...);
 	std::fprintf(stderr, "\n");
+}
+
+static inline void CSV_LOG_WARNING_IMPL(const char* fmt) {
+	std::fprintf(stderr, "Warning: %s\n", fmt);
 }
 
 template <typename... Args>
@@ -203,6 +212,140 @@ bool SaveCSVValue(const std::string& path, const std::vector<T>& values, const s
 	}
 
 	return true;
+}
+
+enum class MeasurementLogValueSource {
+	ElapsedTime,
+	MeasurementValue,
+	Literal,
+};
+
+struct MeasurementLogColumn {
+	size_t column_index;
+	std::string header;
+	MeasurementLogValueSource source;
+	size_t value_index;
+	std::string literal;
+};
+
+static inline MeasurementLogColumn MeasurementLogElapsedTimeColumn(size_t column_index, const std::string& header)
+{
+	return MeasurementLogColumn{ column_index, header, MeasurementLogValueSource::ElapsedTime, 0, std::string() };
+}
+
+static inline MeasurementLogColumn MeasurementLogValueColumn(size_t column_index, const std::string& header, size_t value_index)
+{
+	return MeasurementLogColumn{ column_index, header, MeasurementLogValueSource::MeasurementValue, value_index, std::string() };
+}
+
+static inline MeasurementLogColumn MeasurementLogLiteralColumn(size_t column_index, const std::string& header, const std::string& literal)
+{
+	return MeasurementLogColumn{ column_index, header, MeasurementLogValueSource::Literal, 0, literal };
+}
+
+static inline bool ValidateMeasurementLogColumns(const std::vector<MeasurementLogColumn>& columns, size_t* column_count)
+{
+	if (columns.empty()) {
+		CSV_LOG_ERROR("measurement log columns are empty");
+		return false;
+	}
+
+	size_t max_index = 0;
+	for (const MeasurementLogColumn& column : columns) {
+		if (column.column_index > max_index) {
+			max_index = column.column_index;
+		}
+	}
+
+	std::vector<bool> used(max_index + 1, false);
+	for (const MeasurementLogColumn& column : columns) {
+		if (used[column.column_index]) {
+			CSV_LOG_ERROR("duplicate measurement log column index %zu", column.column_index);
+			return false;
+		}
+		used[column.column_index] = true;
+	}
+
+	if (column_count != nullptr) {
+		*column_count = max_index + 1;
+	}
+	return true;
+}
+
+static inline const MeasurementLogColumn* FindMeasurementLogColumn(const std::vector<MeasurementLogColumn>& columns, size_t column_index)
+{
+	for (const MeasurementLogColumn& column : columns) {
+		if (column.column_index == column_index) {
+			return &column;
+		}
+	}
+
+	return nullptr;
+}
+
+static inline bool WriteMeasurementLogHeader(std::ostream& output, const std::vector<MeasurementLogColumn>& columns)
+{
+	size_t column_count = 0;
+	if (!ValidateMeasurementLogColumns(columns, &column_count)) {
+		return false;
+	}
+
+	std::ostringstream line;
+	for (size_t column_index = 0; column_index < column_count; ++column_index) {
+		if (column_index > 0) {
+			line << ",";
+		}
+
+		const MeasurementLogColumn* column = FindMeasurementLogColumn(columns, column_index);
+		if (column != nullptr) {
+			line << EscapeCSVField(column->header);
+		}
+	}
+	line << "\n";
+
+	output << line.str();
+	return static_cast<bool>(output);
+}
+
+template <typename T>
+bool WriteMeasurementLogRow(std::ostream& output, const std::vector<MeasurementLogColumn>& columns, T elapsed_time, const std::vector<T>& values)
+{
+	size_t column_count = 0;
+	if (!ValidateMeasurementLogColumns(columns, &column_count)) {
+		return false;
+	}
+
+	std::ostringstream line;
+	for (size_t column_index = 0; column_index < column_count; ++column_index) {
+		if (column_index > 0) {
+			line << ",";
+		}
+
+		const MeasurementLogColumn* column = FindMeasurementLogColumn(columns, column_index);
+		if (column == nullptr) {
+			continue;
+		}
+
+		switch (column->source) {
+		case MeasurementLogValueSource::ElapsedTime:
+			line << elapsed_time;
+			break;
+		case MeasurementLogValueSource::MeasurementValue:
+			if (column->value_index >= values.size()) {
+				CSV_LOG_ERROR("measurement value index %zu out of range", column->value_index);
+				return false;
+			}
+			line << values[column->value_index];
+			break;
+		case MeasurementLogValueSource::Literal:
+			line << EscapeCSVField(column->literal);
+			break;
+		}
+	}
+	line << "\n";
+
+	output << line.str();
+	return static_cast<bool>(output);
 }
 
 #ifdef UTILS_ENABLE_LOGGER

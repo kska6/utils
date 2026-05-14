@@ -4,10 +4,12 @@
 
 `include/UtilsCSV.h` はヘッダオンリーの CSV 入出力ユーティリティです。  
 数値配列（`std::vector<T>`）を `index,value` 形式の CSV ファイルに保存・読み込みできます。
+また、計測ログ向けに、列番号・ヘッダ名・値の取得元を明示した複数列 CSV のヘッダ行とデータ行を書き込めます。
 
 - 任意の数値型をテンプレート引数で指定可能（`int`, `double`, `float` など）
 - 保存時に既存ファイルを `.bak` にバックアップする安全な書き込み
 - ヘッダ行のカスタマイズ、ヘッダ有無の切り替えに対応
+- 計測ログ用に、時刻列・値配列の各要素・固定文字列を任意の列へ割り当て可能
 - `UTILS_ENABLE_LOGGER` マクロで `UtilsLogger.h` のログ出力に統合可能
 
 **必要な C++ バージョン**: C++17 以上（`<filesystem>` を使用）
@@ -89,6 +91,85 @@ static inline std::string EscapeCSVField(const std::string& field);
 
 CSV フィールドに `,` `"` `\n` `\r` や前後スペースが含まれる場合に RFC 4180 準拠のクォートエスケープを行います。  
 通常は直接呼び出す必要はありません。
+
+---
+
+### 計測ログ API
+
+複数列の計測ログを、列番号・ヘッダ名・値の取得元を明示して出力できます。
+`SaveCSVValue` の `id,value` 形式ではなく、時刻と複数センサ値を横並びで記録する用途に使います。
+
+```cpp
+std::vector<MeasurementLogColumn> columns = {
+    MeasurementLogElapsedTimeColumn(0, "Time"),
+    MeasurementLogValueColumn(1, "Fx", 0),
+    MeasurementLogValueColumn(2, "Fy", 1),
+    MeasurementLogValueColumn(3, "Fz", 2),
+    MeasurementLogValueColumn(4, "Mx", 3),
+    MeasurementLogValueColumn(5, "My", 4),
+    MeasurementLogValueColumn(6, "Mz", 5),
+};
+
+std::ofstream log("result.csv");
+WriteMeasurementLogHeader(log, columns);
+
+std::vector<double> values = {1.0, 2.0, 3.0, 0.1, 0.2, 0.3};
+WriteMeasurementLogRow(log, columns, 1234.0, values);
+```
+
+生成される CSV:
+
+```csv
+Time,Fx,Fy,Fz,Mx,My,Mz
+1234,1,2,3,0.1,0.2,0.3
+```
+
+#### `MeasurementLogColumn`
+
+```cpp
+struct MeasurementLogColumn {
+    size_t column_index;
+    std::string header;
+    MeasurementLogValueSource source;
+    size_t value_index;
+    std::string literal;
+};
+```
+
+| フィールド | 説明 |
+|---|---|
+| `column_index` | CSV の何列目に出力するか。0 始まり |
+| `header` | ヘッダ行に出力する列名 |
+| `source` | 行データの取得元 |
+| `value_index` | `MeasurementValue` の場合、値配列の何番目を使うか |
+| `literal` | `Literal` の場合、固定文字列として出力する値 |
+
+#### 補助関数
+
+```cpp
+MeasurementLogElapsedTimeColumn(column_index, header);
+MeasurementLogValueColumn(column_index, header, value_index);
+MeasurementLogLiteralColumn(column_index, header, literal);
+```
+
+#### 書き込み関数
+
+```cpp
+bool WriteMeasurementLogHeader(
+    std::ostream& output,
+    const std::vector<MeasurementLogColumn>& columns
+);
+
+template <typename T>
+bool WriteMeasurementLogRow(
+    std::ostream& output,
+    const std::vector<MeasurementLogColumn>& columns,
+    T elapsed_time,
+    const std::vector<T>& values
+);
+```
+
+列番号が重複している場合や、`value_index` が値配列の範囲外の場合は `false` を返します。
 
 ---
 
