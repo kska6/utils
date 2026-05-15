@@ -11,6 +11,7 @@
 #include "UtilsCSV.h"
 #include "UtilsInput.h"
 #include "UtilsLogger.h"
+#include "UtilsPath.h"
 ```
 
 ## 対応環境
@@ -86,6 +87,17 @@ TimeManager::UpdateFrameTime();
 Logger::TimePrint(GetTimeInfo());
 ```
 
+### `UtilsPath.h`
+
+実行ファイル位置の取得、祖先ディレクトリ探索、ディレクトリ作成に使います。
+
+```cpp
+const auto projectRoot = FindAncestorDirectoryContaining(
+    GetExecutableDirectory(),
+    {".git", "MyProject.sln"});
+const auto dataDir = EnsureDirectory(projectRoot / "data");
+```
+
 ## 最小例
 
 ```cpp
@@ -105,4 +117,5 @@ int main() {
 - [include/UtilsCSV.h](include/UtilsCSV.h)
 - [include/UtilsInput.h](include/UtilsInput.h)
 - [include/UtilsLogger.h](include/UtilsLogger.h)
+- [include/UtilsPath.h](include/UtilsPath.h)
 - [include/UtilsTime.h](include/UtilsTime.h)
